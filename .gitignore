@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.ruff_cache/
+.pytest_cache/
+
+# Corpus DB is distributed via GitHub Releases, never committed
+*.db
+*.db-wal
+*.db-shm
+
+# macOS
+.DS_Store
