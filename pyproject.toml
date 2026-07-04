@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chinese-history-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "A traceable Chinese-history MCP server: 4 tools over 9 classical texts, every result cited (book→chapter→paragraph). Zero runtime dependencies."
 readme = "README.md"
 requires-python = ">=3.9"

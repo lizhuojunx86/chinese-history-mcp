@@ -5,6 +5,18 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] — 2026-07-04
+
+### Added
+- Published to **PyPI**: `pip install chinese-history-mcp` (zero dependencies;
+  console script `chinese-history-mcp`).
+- MCP registry manifest (`server.json`) + `mcp-name` ownership marker, and a
+  GitHub Actions workflow that publishes to the official MCP registry on version
+  tags via OIDC (no interactive login).
+
+### Changed
+- README install section leads with `pip install` / `uvx`; added PyPI badge.
+
 ## [0.1.0] — 2026-07-04
 
 Initial public release.
@@ -32,4 +44,5 @@ Initial public release.
 - Demo script (`scripts/mcp_demo.py`, also a minimal MCP-client reference) and
   a bare-LLM-vs-server hallucination comparison (`docs/MCP_DEMO.md`).
 
+[0.1.1]: https://pypi.org/project/chinese-history-mcp/0.1.1/
 [0.1.0]: https://github.com/lizhuojunx86/chinese-history-mcp/releases/tag/v0.1.0

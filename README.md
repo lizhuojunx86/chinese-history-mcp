@@ -1,5 +1,7 @@
 # chinese-history-mcp
 
+<!-- mcp-name: io.github.lizhuojunx86/chinese-history-mcp -->
+
 [![CI](https://github.com/lizhuojunx86/chinese-history-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/lizhuojunx86/chinese-history-mcp/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/chinese-history-mcp.svg)](https://pypi.org/project/chinese-history-mcp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)

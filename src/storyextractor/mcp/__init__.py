@@ -11,4 +11,4 @@ stdio JSON-RPC 2.0 手写实现, 不引入官方 MCP SDK。只读打开 corpus.d
 from __future__ import annotations
 
 SERVER_NAME = "gushi-story"
-SERVER_VERSION = "0.1.0"
+SERVER_VERSION = "0.1.1"
