@@ -19,15 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-NOTE ON DATA LICENSING
-
-This MIT license covers the SOURCE CODE in this repository only.
-
-The corpus database (`corpus.db`, distributed separately as a GitHub Release
-attachment) is licensed under Creative Commons Attribution 4.0 International
-(CC BY 4.0). It is derived from public-domain classical Chinese texts (白文)
-with machine-generated punctuation, segmentation, and vernacular translation,
-plus machine-assisted structured annotations. See README "Data & provenance".
