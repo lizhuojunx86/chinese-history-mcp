@@ -7,10 +7,46 @@ name = "chinese-history-mcp"
 version = "0.1.0"
 description = "A traceable Chinese-history MCP server: 4 tools over 9 classical texts, every result cited (book→chapter→paragraph). Zero runtime dependencies."
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 license = { text = "MIT" }
-keywords = ["mcp", "model-context-protocol", "chinese-history", "classical-chinese", "sinology", "rag", "provenance"]
+authors = [{ name = "Li Zhuojun" }]
+keywords = [
+    "mcp",
+    "model-context-protocol",
+    "chinese-history",
+    "classical-chinese",
+    "sinology",
+    "rag",
+    "provenance",
+    "json-rpc",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: Chinese (Simplified)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Text Processing :: Linguistic",
+    "Topic :: Scientific/Engineering",
+    "Typing :: Typed",
+]
 dependencies = []   # runtime is Python standard library only
+
+[project.urls]
+Homepage = "https://github.com/lizhuojunx86/chinese-history-mcp"
+Repository = "https://github.com/lizhuojunx86/chinese-history-mcp"
+Issues = "https://github.com/lizhuojunx86/chinese-history-mcp/issues"
+Changelog = "https://github.com/lizhuojunx86/chinese-history-mcp/blob/main/CHANGELOG.md"
+Releases = "https://github.com/lizhuojunx86/chinese-history-mcp/releases"
 
 [project.scripts]
 chinese-history-mcp = "storyextractor.mcp.server:main"
