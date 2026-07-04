@@ -1,0 +1,17 @@
+name: Feature request
+description: Suggest a tool, field, or improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like
+      description: The use case and what the server would do.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        Please keep in mind the project's constraints: zero runtime
+        dependencies, read-only, every result cited, and honest `review_status`
+        (no presenting machine/draft data as human-reviewed).

@@ -1,0 +1,28 @@
+name: Bug report
+description: Something in the server or tools misbehaves
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What did you do, what did you expect, what did you get?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Tool call / reproduction
+      description: The tool name + arguments (or the raw JSON-RPC), and the response.
+      render: json
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "Python 3.12, corpus.db v0.1.0, client: Claude Desktop / Cline / …"
+  - type: markdown
+    attributes:
+      value: |
+        For data-quality issues (wrong citation, bad place mapping, dubious
+        event), please include the returned `review_status` and the expected
+        source — it helps separate machine-vs-human provenance.

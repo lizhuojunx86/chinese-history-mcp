@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="498" viewBox="0 0 860 498" font-family="'SF Mono','Cascadia Code',Menlo,Consolas,'DejaVu Sans Mono','PingFang SC','Microsoft YaHei',monospace" font-size="15">
+  <rect width="860" height="498" rx="10" fill="#0d1117"/>
+  <rect width="860" height="40" rx="10" fill="#161b22"/>
+  <rect y="28" width="860" height="12" fill="#161b22"/>
+  <circle cx="22" cy="20" r="6" fill="#ff5f56"/>
+  <circle cx="42" cy="20" r="6" fill="#ffbd2e"/>
+  <circle cx="62" cy="20" r="6" fill="#27c93f"/>
+  <text x="430" y="25" fill="#8b949e" font-size="13" text-anchor="middle">chinese-history-mcp — every result is cited</text>
+
+  <text x="28" y="78"><tspan fill="#58a6ff">$</tspan><tspan fill="#c9d1d9"> chinese-history-mcp --db corpus.db</tspan></text>
+  <text x="28" y="103"><tspan fill="#3fb950">●</tspan><tspan fill="#8b949e"> connected  gushi-story v0.1.0 · MCP 2025-06-18 · read-only</tspan></text>
+
+  <text x="28" y="141"><tspan fill="#d2a8ff">▸ query_by_place</tspan><tspan fill="#a5d6ff">  "西安"</tspan></text>
+  <text x="52" y="166"><tspan fill="#c9d1d9">同名异地 → 陕西西安 (1083)  ·  山东淄博 (8)</tspan><tspan fill="#8b949e">   # never auto-picks</tspan></text>
+
+  <text x="28" y="204"><tspan fill="#d2a8ff">▸ query_by_quality</tspan><tspan fill="#a5d6ff">  "忠"</tspan><tspan fill="#8b949e"> loyalty</tspan></text>
+  <text x="52" y="229"><tspan fill="#c9d1d9">[event] 鞍之战及战后齐晋交涉</tspan><tspan fill="#8b949e">  · </tspan><tspan fill="#3fb950">auto_approved</tspan></text>
+  <text x="52" y="254"><tspan fill="#8b949e">evidence </tspan><tspan fill="#a5d6ff">「逄丑父与齐顷公交换位置，代君被俘」</tspan></text>
+  <text x="52" y="279"><tspan fill="#8b949e">cite     </tspan><tspan fill="#7ee787">史记·齐太公世家第二 段 12</tspan></text>
+
+  <text x="28" y="317"><tspan fill="#d2a8ff">▸ get_person</tspan><tspan fill="#a5d6ff">  "曹操"</tspan><tspan fill="#8b949e">  · </tspan><tspan fill="#d29922">draft profile</tspan></text>
+  <text x="52" y="342"><tspan fill="#a5d6ff">「曹公有雄才远畧，决机无疑，法一而兵精，能用度外之人…」</tspan></text>
+  <text x="52" y="367"><tspan fill="#8b949e">cite     </tspan><tspan fill="#7ee787">资治通鉴·汉纪五十五 段 9</tspan></text>
+
+  <text x="28" y="405"><tspan fill="#d2a8ff">▸ search_events</tspan><tspan fill="#a5d6ff">  "鸿门宴"</tspan><tspan fill="#8b949e">  · </tspan><tspan fill="#58a6ff">cross-book</tspan><tspan fill="#8b949e"> · </tspan><tspan fill="#3fb950">approved</tspan></text>
+  <text x="52" y="430"><tspan fill="#7ee787">资治通鉴·汉纪一 段4–8</tspan><tspan fill="#8b949e"> · </tspan><tspan fill="#7ee787">史记·项羽本纪第七 段12–16</tspan></text>
+
+  <line x1="28" y1="454" x2="832" y2="454" stroke="#21262d"/>
+  <text x="28" y="480"><tspan fill="#8b949e">every result → </tspan><tspan fill="#7ee787">【book · chapter · paragraph】</tspan><tspan fill="#8b949e"> + honest </tspan><tspan fill="#c9d1d9">review_status</tspan></text>
+</svg>

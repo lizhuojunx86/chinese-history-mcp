@@ -1,5 +1,13 @@
 # chinese-history-mcp
 
+[![CI](https://github.com/lizhuojunx86/chinese-history-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/lizhuojunx86/chinese-history-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Data: CC BY 4.0](https://img.shields.io/badge/Data-CC%20BY%204.0-blue.svg)](DATA_LICENSE.md)
+[![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-3776ab.svg)](https://www.python.org/)
+[![Dependencies: zero](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](#)
+[![MCP](https://img.shields.io/badge/MCP-server-000000.svg)](https://modelcontextprotocol.io)
+[![Release](https://img.shields.io/github/v/release/lizhuojunx86/chinese-history-mcp)](https://github.com/lizhuojunx86/chinese-history-mcp/releases)
+
 A **traceable Chinese-history MCP server**. Four [Model Context
 Protocol](https://modelcontextprotocol.io) tools over **9 classical Chinese
 texts** (pre-Qin to Wei-Jin — 史记 / 汉书 / 后汉书 / 三国志 / 左传 / 论语 / 孟子 /
@@ -9,6 +17,8 @@ per-item human review it doesn't have.
 
 > 一个**可溯源的中国历史故事** MCP server：按事件 / 人物 / 今地名 / 品质四轴查询
 > 先秦-汉魏九部正史子书，每条返回都带原文出处，机器生成/机审内容如实标注。
+
+![Demo — every result is cited](assets/demo.svg)
 
 - **Zero runtime dependencies** — pure Python standard library. No `pip install`
   of a framework, no MCP SDK; the whole server is auditable in a few files.
@@ -20,6 +30,10 @@ per-item human review it doesn't have.
 Why this exists: as of mid-2026 the public MCP ecosystem has **no classical
 Chinese / Chinese-history server**. This fills that gap. Income expectation is
 zero; the goal is a useful public good.
+
+**Contents**: [The four tools](#the-four-tools) · [Install & run](#install--run) ·
+[The corpus database](#the-corpus-database) · [Honesty](#honesty-please-read) ·
+[Data & provenance](#data--provenance) · [Design notes](#design-notes)
 
 ---
 
@@ -167,3 +181,16 @@ labeled throughout for AIGC compliance.
   shapes/error codes, honest `review_status`, alias token-exact matching +
   disambiguation, LIKE-wildcard escaping) — builds a temporary fixture DB, so
   it runs without `corpus.db`.
+
+---
+
+## Contributing & project meta
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) — how to run tests/lint and the principles
+  this project holds to.
+- [CHANGELOG.md](CHANGELOG.md) — release history.
+- [SECURITY.md](SECURITY.md) — threat surface (read-only, no network) and how to
+  report issues.
+
+Issues and pull requests are welcome. Please keep the constraints in mind:
+zero runtime dependencies, read-only, every result cited, honest `review_status`.

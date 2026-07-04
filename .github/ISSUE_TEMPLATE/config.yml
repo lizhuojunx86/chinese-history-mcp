@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: README & configuration
+    url: https://github.com/lizhuojunx86/chinese-history-mcp#readme
+    about: How to install, configure in an MCP client, and the honesty notes.
+  - name: Demo & hallucination comparison
+    url: https://github.com/lizhuojunx86/chinese-history-mcp/blob/main/docs/MCP_DEMO.md
+    about: Bare LLM vs. this server on the same questions.
