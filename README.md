@@ -1,6 +1,7 @@
 # chinese-history-mcp
 
 [![CI](https://github.com/lizhuojunx86/chinese-history-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/lizhuojunx86/chinese-history-mcp/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/chinese-history-mcp.svg)](https://pypi.org/project/chinese-history-mcp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Data: CC BY 4.0](https://img.shields.io/badge/Data-CC%20BY%204.0-blue.svg)](DATA_LICENSE.md)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-3776ab.svg)](https://www.python.org/)
@@ -54,25 +55,38 @@ from — that is the point of the server.
 
 ## Install & run
 
-Requires **Python 3.7+** (standard library only). The server speaks MCP over
-stdio (newline-delimited JSON-RPC 2.0).
+Requires **Python 3.9+** (standard library only — nothing else is installed).
+The server speaks MCP over stdio (newline-delimited JSON-RPC 2.0).
 
 ```bash
-# 1. Get the corpus DB (see "The corpus database" below), then:
-PYTHONPATH=src python3 -m storyextractor.mcp.server --db /path/to/corpus.db
+pip install chinese-history-mcp
+# then (after downloading corpus.db from Releases — see below):
+chinese-history-mcp --db /path/to/corpus.db
 ```
 
-Or `pip install .` to get a `chinese-history-mcp` console command:
+Or run without installing, straight from a checkout:
 
 ```bash
-pip install .
-chinese-history-mcp --db /path/to/corpus.db
+PYTHONPATH=src python3 -m storyextractor.mcp.server --db /path/to/corpus.db
 ```
 
 ### Configure in an MCP client
 
 Claude Desktop (`claude_desktop_config.json`), Cline, Continue, etc. — add one
-stdio server:
+stdio server. After `pip install chinese-history-mcp`:
+
+```json
+{
+  "mcpServers": {
+    "chinese-history": {
+      "command": "chinese-history-mcp",
+      "args": ["--db", "/path/to/corpus.db"]
+    }
+  }
+}
+```
+
+<details><summary>Alternative: run from a checkout (no install), or with <code>uvx</code></summary>
 
 ```json
 {
@@ -87,8 +101,10 @@ stdio server:
 }
 ```
 
-(After `pip install .` you can instead use `"command": "chinese-history-mcp",
-"args": ["--db", "/path/to/corpus.db"]` and drop `env`/`cwd`.)
+Or zero-install with [uv](https://docs.astral.sh/uv/):
+`uvx chinese-history-mcp --db /path/to/corpus.db`.
+
+</details>
 
 ### Try one handshake by hand
 
@@ -97,7 +113,7 @@ printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
   '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"query_by_quality","arguments":{"quality":"忠","limit":2}}}' \
-  | PYTHONPATH=src python3 -m storyextractor.mcp.server --db /path/to/corpus.db
+  | chinese-history-mcp --db /path/to/corpus.db
 ```
 
 ### Demo + hallucination comparison

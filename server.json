@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.lizhuojunx86/chinese-history-mcp",
+  "description": "Traceable Chinese-history MCP server: 4 tools over 9 classical texts (pre-Qin to Wei-Jin), every result cited (book/chapter/paragraph) with honest review_status. Zero dependencies.",
+  "version": "0.1.0",
+  "repository": {
+    "url": "https://github.com/lizhuojunx86/chinese-history-mcp",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "chinese-history-mcp",
+      "version": "0.1.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "named",
+          "name": "--db",
+          "description": "Path to corpus.db (download from the GitHub Releases of this repo)",
+          "isRequired": true
+        }
+      ]
+    }
+  ]
+}
