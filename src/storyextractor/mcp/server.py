@@ -55,6 +55,9 @@ TOOLS = [
                          "description": f"限定来源书 slug (可选): {_BOOK_SLUGS}"},
                 "person": {"type": "string",
                            "description": "限定涉及人物 (标题/叙述/摘录含此名), 如 '韩信'"},
+                "kind": {"type": "string",
+                         "description": ("按事件类型过滤(可选): '事件'|'场景'|'评价'。"
+                                          "不传默认返回全部类型, 含他者评价产出的'评价'事件。")},
                 "limit": {"type": "integer", "description": "返回条数 1-50, 默认 10", "default": 10},
             },
         },
@@ -116,7 +119,8 @@ def _dispatch_tool(conn: sqlite3.Connection, name: str, args: dict) -> dict:
     args = args or {}
     if name == "search_events":
         return Q.search_events(conn, keyword=args.get("keyword"), book=args.get("book"),
-                               person=args.get("person"), limit=args.get("limit", 10))
+                               person=args.get("person"), kind=args.get("kind"),
+                               limit=args.get("limit", 10))
     if name == "get_person":
         return Q.get_person(conn, name=args.get("name", ""))
     if name == "query_by_place":

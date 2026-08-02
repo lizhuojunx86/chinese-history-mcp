@@ -43,6 +43,15 @@ def _build_fixture(path: str) -> None:
               " VALUES(1,'per-test01','项羽','person','西楚霸王','draft','秦末','项王、西楚霸王',1,7)")
     c.execute("INSERT INTO entity_mentions(id,entity_id,book_id,chapter_seq,para_start,para_end,"
               "aspect,excerpt,note) VALUES(1,1,1,7,2,2,'评价','项羽勇而无谋','勇武')")
+    # Phase 3 (ADR-009 §4) 迁移后他者评价的落点: entity_mentions/mention_qualities 冻结不删
+    # (上面两行仍保留, 模拟真实生产库的历史数据), 但 mcp 查询已切到读 event_person_refs/
+    # event_qualities(subject_entity_id) —— 这里手工构造 migrate_appraisals.py 对上面那条
+    # entity_mention 实际会产出的等价新形状行(段落 2-2 与 event 1 的 event_sources 1-2 重叠,
+    # 故挂靠既有事件, 不新建), 而不是调用迁移脚本本身, 保持 fixture 对迁移逻辑的独立性。
+    c.execute("INSERT INTO event_sources(id,event_id,book_id,chapter_seq,para_start,para_end,role,"
+              "excerpt,note) VALUES(2,1,1,7,2,2,'评论','项羽勇而无谋','勇武')")
+    c.execute("INSERT INTO event_person_refs(event_id,entity_id,role,evidence_src,extractor) "
+              "VALUES(1,1,'subject',2,'derived:entity_mentions')")
     # 同名异指消歧用例: 两人共用别名 token『文侯』(整词匹配须返回候选, 不静默选一)
     c.execute("INSERT INTO entities(id,slug,name,kind,status,era,aliases) "
               "VALUES(2,'per-test02','魏斯','person','draft','战国','魏文侯、文侯')")
@@ -70,6 +79,25 @@ def _build_fixture(path: str) -> None:
     # 一条 draft (未人审) 品质边: get_person 须逐字透出 review_status='draft', 不静默当人审通过
     c.execute("INSERT INTO mention_qualities(mention_id,quality_id,rationale,evidence_quote,confidence,"
               "review_status) VALUES(1,2,'评其刚','项羽勇而无谋',0.95,'draft')")
+    # 上面两条 mention_qualities 在新形状里的等价物 (subject_entity_id=1 指回"项羽"这个评价
+    # 对象; event_id=1 因为段落重叠挂靠到既有事件, 同 event_sources id=2 一致)。
+    c.execute("INSERT INTO event_qualities(event_id,quality_id,rationale,evidence_quote,confidence,"
+              "review_status,evidence_src,subject_entity_id) "
+              "VALUES(1,1,'评其勇','项羽勇而无谋',0.8,'auto_approved',2,1)")
+    c.execute("INSERT INTO event_qualities(event_id,quality_id,rationale,evidence_quote,confidence,"
+              "review_status,evidence_src,subject_entity_id) "
+              "VALUES(1,2,'评其刚','项羽勇而无谋',0.95,'draft',2,1)")
+    # 人物关系 (ADR-009 收尾①): approved/auto_approved 透出, draft 门控隐藏;
+    # 项羽在 b 侧的行须用互逆标签(君主)表述。
+    c.execute("INSERT INTO relation_types(slug,label,category,reciprocal_slug,symmetric) "
+              "VALUES('chen','臣属','君臣','jun',0),('jun','君主','君臣','chen',0),"
+              "('zhiyou','挚友','交往',NULL,1)")
+    c.execute("INSERT INTO entity_relations(entity_id_a,entity_id_b,relation_slug,rationale,"
+              "confidence,review_status) VALUES(1,2,'chen','受其封拜',0.9,'approved')")
+    c.execute("INSERT INTO entity_relations(entity_id_a,entity_id_b,relation_slug,rationale,"
+              "confidence,review_status) VALUES(3,1,'chen','称臣于项羽',0.85,'auto_approved')")
+    c.execute("INSERT INTO entity_relations(entity_id_a,entity_id_b,relation_slug,rationale,"
+              "confidence,review_status) VALUES(1,3,'zhiyou','未复核',0.9,'draft')")
     conn.commit()
     conn.close()
 
@@ -231,6 +259,39 @@ class TestHonesty(_FixtureCase):
         self.assertIn("machine-generated", d["events"][0]["rationale_note"])
 
 
+class TestPhase3ReadPathSwitchover(_FixtureCase):
+    """Phase 4: get_person/query_by_quality 读路径切到 event_person_refs/event_qualities
+    (subject_entity_id), 不再依赖冻结的 entity_mentions/mention_qualities (ADR-009 §7)。"""
+
+    def test_get_person_appraisal_sourced_from_event_person_refs_not_entity_mentions(self):
+        d = Q.get_person(self.conn, "项羽")
+        app = d["person"]["appraisals_by_others"][0]
+        self.assertEqual("项羽勇而无谋", app["excerpt"])
+        self.assertEqual("勇武", app["gist"])
+        self.assertEqual("史记", app["citation"]["book"])
+
+    def test_get_person_qualities_include_migrated_draft_edge(self):
+        quals = Q.get_person(self.conn, "项羽")["person"]["qualities"]
+        gz = next(q for q in quals if q["slug"] == "gangzhi")
+        self.assertEqual("draft", gz["review_status"])
+
+    def test_query_by_quality_persons_sourced_from_event_qualities(self):
+        d = Q.query_by_quality(self.conn, "勇")
+        self.assertEqual("项羽", d["persons"][0]["name"])
+        self.assertEqual("史记", d["persons"][0]["citation"]["book"])
+
+    def test_search_events_kind_filter_is_opt_in(self):
+        """不传 kind: 不因为存在 kind='评价' 的事件而漏掉别的类型 (本 fixture 只有 kind='事件',
+        断言不传 kind 时能正常检出; 传一个不存在的 kind 则应过滤掉)。"""
+        d = Q.search_events(self.conn, keyword="鸿门")
+        self.assertEqual(1, len(d["events"]))
+        self.assertIsNone(d["query"]["kind"])
+        d2 = Q.search_events(self.conn, keyword="鸿门", kind="评价")
+        self.assertEqual(0, len(d2["events"]), "kind='评价' 不应匹配 kind='事件' 的鸿门宴")
+        d3 = Q.search_events(self.conn, keyword="鸿门", kind="事件")
+        self.assertEqual(1, len(d3["events"]))
+
+
 class TestReviewFixes(_FixtureCase):
     """审查工作流确认问题的回归守卫 (只新增)。"""
 
@@ -297,6 +358,55 @@ class TestReviewFixes(_FixtureCase):
     # --- chapter_name NULL 守卫 (不透出 '#None') ---
     def test_chapter_name_null_guard(self):
         self.assertEqual(chapter_name(self.conn, "shiji", None), "#?")
+
+
+class TestPersonRelations(_FixtureCase):
+    """get_person.relations (ADR-009 收尾①): P-6 门控只透 approved/auto_approved,
+    b 侧行用互逆标签, 逐条带真实 review_status。"""
+
+    def test_relations_gated_and_reciprocal_labeled(self):
+        from storyextractor.mcp.queries import get_person
+        p = get_person(self.conn, "项羽")["person"]
+        rels = p["relations"]
+        self.assertEqual(2, len(rels), "draft 挚友边不得透出")
+        by_other = {r["other"]: r for r in rels}
+        self.assertEqual("臣属", by_other["魏斯"]["relation"], "a 侧用本方向标签")
+        self.assertEqual("君主", by_other["韩虔"]["relation"], "b 侧须换互逆标签(项羽是韩虔之君)")
+        for r in rels:
+            self.assertIn(r["review_status"], ("approved", "auto_approved"))
+        self.assertIn("relations_note", p)
+
+
+class TestOldDataGracefulDegradation(unittest.TestCase):
+    """旧数据版本兼容: 公开发行的 corpus.db (data-v0.1.0) 无 ADR-009 表——新代码跑旧库须
+    诚实省略新字段而非崩溃 (公开仓同步的前置守卫)。"""
+
+    def test_missing_new_tables_degrade_not_crash(self):
+        import shutil
+        fd, path = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        try:
+            _build_fixture(path)
+            raw = sqlite3.connect(path)
+            raw.executescript(
+                "DROP TABLE entity_relations; DROP TABLE relation_types; "
+                "DROP TABLE event_time_refs;")
+            raw.close()
+            conn = ro_connect(path)
+            from storyextractor.mcp.queries import get_person, search_events
+            p = get_person(conn, "项羽")["person"]
+            self.assertEqual([], p["relations"], "关系表缺失 → 空数组, 不崩")
+            evs = search_events(conn, "鸿门")["events"]
+            self.assertTrue(all(e.get("time_label_source") in (None, "manual") for e in evs),
+                            "时间派生表缺失 → 只剩手填/None, 不崩")
+            conn.close()
+        finally:
+            shutil.rmtree(path, ignore_errors=True)
+            for suffix in ("", "-wal", "-shm"):
+                try:
+                    os.remove(path + suffix)
+                except OSError:
+                    pass
 
 
 if __name__ == "__main__":

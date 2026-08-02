@@ -82,11 +82,18 @@ def _event_sources(conn: sqlite3.Connection, eid: int) -> list[dict]:
     return out
 
 
-def search_events(conn, keyword=None, book=None, person=None, limit=10) -> dict:
-    """跨书融合事件 + 逐源出处。keyword/person 走 title|摘要匹配, book 按来源书 slug 过滤。"""
+def search_events(conn, keyword=None, book=None, person=None, kind=None, limit=10) -> dict:
+    """跨书融合事件 + 逐源出处。keyword/person 走 title|摘要匹配, book 按来源书 slug 过滤,
+    kind 可选按事件类型过滤('事件'|'场景'|'评价')。**默认不按 kind 过滤**——events 表里
+    'kind=评价' 的行是 Phase 3 迁移他者评价产出的评价事件, 承载了原 mention_qualities 里
+    73%(5529/7550)的品质边覆盖; 若默认排除会静默丢失这部分覆盖, 故只有调用方显式传 kind
+    才收窄范围, 不传 = 事件/场景/评价一起返回(同 EVENT_DIMENSIONS.md §6 的既定决策)。"""
     limit = _clamp(limit, 1, 50, 10)
     where = ["e.status = 'approved'"]
     params: list = []
+    if kind:
+        where.append("e.kind = ?")
+        params.append(kind)
     if keyword:
         kw = f"%{_like_escape(keyword)}%"
         where.append("(e.title LIKE ? ESCAPE '\\' OR e.canonical_summary LIKE ? ESCAPE '\\')")
@@ -108,12 +115,21 @@ def search_events(conn, keyword=None, book=None, person=None, limit=10) -> dict:
         "ORDER BY (SELECT COUNT(*) FROM event_sources es WHERE es.event_id=e.id) DESC, e.id "
         "LIMIT ?", params + [limit]).fetchall()
     events = []
-    for eid, slug, title, kind, tl, status, summary, book_id in rows:
+    for eid, slug, title, ekind, tl, status, summary, book_id in rows:
+        tl_source = "manual" if (tl or "").strip() else None
+        if tl_source is None:              # A2: 手填空 → 派生 (已审时间锚点, 诚实标注来源)
+            try:
+                from ..extract.time_label import derive_time_label
+                tl = derive_time_label(conn, eid)
+                tl_source = "derived_from_reviewed_time_anchors" if tl else None
+            except sqlite3.OperationalError:   # 旧数据版本 (无 ADR-009 表) → 诚实省略
+                tl, tl_source = None, None
         events.append({
             "slug": slug,
             "title": title,
-            "kind": kind,
+            "kind": ekind,
             "time_label": tl,
+            "time_label_source": tl_source,
             "review_status": status,
             "cross_book": book_id is None,
             "canonical_summary": summary,
@@ -122,7 +138,7 @@ def search_events(conn, keyword=None, book=None, person=None, limit=10) -> dict:
         })
     return {
         "axis": "events",
-        "query": {"keyword": keyword, "book": book, "person": person, "limit": limit},
+        "query": {"keyword": keyword, "book": book, "person": person, "kind": kind, "limit": limit},
         "total_matches": total,
         "returned": len(events),
         "events": events,
@@ -186,22 +202,24 @@ def get_person(conn, name: str) -> dict:
                 "honesty": HONESTY["person"]}
     eid, slug, pname, profile, status, era, aliases, disambig, home_bid, home_seq = row
     home = _person_home(conn, home_bid, home_seq)
-    # 他者评价 (跨篇)
+    # 他者评价 (跨篇, Phase 3 迁移后来自 events(kind=评价)/event_person_refs(role=subject),
+    # 不再读冻结的 entity_mentions —— 见 docs/EVENT_DIMENSIONS.md §4/§7)
     apps = conn.execute(
-        "SELECT m.chapter_seq, m.para_start, m.para_end, m.excerpt, m.note, m.aspect, b.title, b.slug "
-        "FROM entity_mentions m JOIN books b ON b.id=m.book_id "
-        "WHERE m.entity_id=? AND m.aspect='评价' ORDER BY m.id", (eid,)).fetchall()
+        "SELECT es.chapter_seq, es.para_start, es.para_end, es.excerpt, es.note, b.title, b.slug "
+        "FROM event_person_refs epr JOIN event_sources es ON es.id=epr.evidence_src "
+        "JOIN books b ON b.id=es.book_id "
+        "WHERE epr.entity_id=? AND epr.role='subject' ORDER BY es.id", (eid,)).fetchall()
     appraisals = [{
-        "excerpt": ex, "gist": note, "aspect": asp,
+        "excerpt": ex, "gist": note, "aspect": "评价",
         "citation": citation(bt, chapter_name(conn, bs, seq), ps, pe),
-    } for seq, ps, pe, ex, note, asp, bt, bs in apps]
-    # 史料评为的品质 (据他者评价机器抽取, 非 rejected)。同品质多条边 → 取最可信一条为代表,
-    # 逐字透出其 review_status (不折成布尔), strength 亦取该代表边 (不被 draft 边虚抬)。
+    } for seq, ps, pe, ex, note, bt, bs in apps]
+    # 史料评为的品质 (Phase 3 迁移后来自 event_qualities(subject_entity_id), 不再读冻结的
+    # mention_qualities, 非 rejected)。同品质多条边 → 取最可信一条为代表, 逐字透出其
+    # review_status (不折成布尔), strength 亦取该代表边 (不被 draft 边虚抬)。
     qrows = conn.execute(
-        "SELECT q.slug, q.name, q.polarity, mq.review_status, mq.confidence "
-        "FROM mention_qualities mq JOIN entity_mentions em ON em.id=mq.mention_id "
-        "JOIN qualities q ON q.id=mq.quality_id "
-        "WHERE em.entity_id=? AND mq.review_status<>'rejected'", (eid,)).fetchall()
+        "SELECT q.slug, q.name, q.polarity, eq.review_status, eq.confidence "
+        "FROM event_qualities eq JOIN qualities q ON q.id=eq.quality_id "
+        "WHERE eq.subject_entity_id=? AND eq.review_status<>'rejected'", (eid,)).fetchall()
     best: dict = {}
     for qs, qn, pol, rs, conf in qrows:
         keyv = (_STATUS_PRI.get(rs, 4), -(conf or 0.0))
@@ -209,12 +227,39 @@ def get_person(conn, name: str) -> dict:
             best[qs] = (keyv, {"slug": qs, "name": qn, "polarity": pol,
                                "review_status": rs, "strength": _strength(conf)})
     qualities = [d for _k, d in sorted(best.values(), key=lambda kd: kd[0])]
-    # 提及此人的事件 (按姓名匹配, 未必主角)
+    # 提及此人的事件 (event_person_refs 精确关联, role≠subject 排除纯评价对象角色——那些已经
+    # 单独出现在 appraisals_by_others 里, 不重复列; role='subject' 但事件本身不是叙事事件的
+    # 情况已被此条件自然排除)
     evs = conn.execute(
-        "SELECT slug, title FROM events WHERE status='approved' "
-        "AND (title LIKE ? OR canonical_summary LIKE ?) ORDER BY id LIMIT 30",
-        (f"%{pname}%", f"%{pname}%")).fetchall()
+        "SELECT DISTINCT e.slug, e.title FROM event_person_refs epr JOIN events e ON e.id=epr.event_id "
+        "WHERE epr.entity_id=? AND epr.role<>'subject' AND e.status='approved' ORDER BY e.id LIMIT 30",
+        (eid,)).fetchall()
     events = [{"slug": s, "title": t} for s, t in evs]
+    # 人物关系 (ADR-009 收尾①, entity_relations): 只透出 approved/auto_approved (P-6 门控,
+    # draft/rejected 不进对外查询)。行语义『a 是 b 的 slug』; 本人在 b 侧时用互逆标签表述。
+    try:
+        rrows = conn.execute(
+            "SELECT er.relation_slug, rt.label, rt.symmetric, IFNULL(rt2.label, rt.label), "
+            "er.entity_id_a, ea.name, eb.name, er.confidence, er.review_status "
+            "FROM entity_relations er JOIN relation_types rt ON rt.slug=er.relation_slug "
+            "LEFT JOIN relation_types rt2 ON rt2.slug=rt.reciprocal_slug "
+            "JOIN entities ea ON ea.id=er.entity_id_a JOIN entities eb ON eb.id=er.entity_id_b "
+            "WHERE (er.entity_id_a=? OR er.entity_id_b=?) "
+            "AND er.review_status IN ('approved','auto_approved') "
+            "ORDER BY er.confidence DESC LIMIT 50", (eid, eid)).fetchall()
+    except sqlite3.OperationalError:       # 旧数据版本 (corpus < data-v0.2.0) 无关系表 → 空
+        rrows = []
+    relations = []
+    for slug_, label, sym, rec_label, aid2, na2, nb2, conf, rs in rrows:
+        other = nb2 if aid2 == eid else na2
+        if sym:
+            desc = f"与 {other}〔{label}〕"
+        elif aid2 == eid:
+            desc = f"是 {other} 的〔{label}〕"
+        else:
+            desc = f"是 {other} 的〔{rec_label}〕"
+        relations.append({"other": other, "relation": label if (sym or aid2 == eid) else rec_label,
+                          "description": desc, "confidence": conf, "review_status": rs})
     return {
         "axis": "person",
         "query": name,
@@ -232,7 +277,10 @@ def get_person(conn, name: str) -> dict:
             "qualities": qualities,
             "qualities_note": "据他者评价机器抽取, 每条带真实 review_status (含未人审 draft)",
             "events_mentioning": events,
-            "events_note": "按姓名字符串匹配, 未必是主角",
+            "events_note": "结构化人物-事件关联(event_person_refs), 不再是姓名字符串匹配",
+            "relations": relations,
+            "relations_note": "人物关系(entity_relations), 只含 approved/auto_approved "
+                              "(机审复核+分级审通过); 无时间边界, 盟友与敌手可先后并存",
         },
         "honesty": HONESTY["person"] + " " + HONESTY["text"],
     }
@@ -391,15 +439,16 @@ def query_by_quality(conn, quality: str, limit=10, include_draft=False) -> dict:
             "strength": _strength(conf),
             "sources": _event_sources(conn, eid),
         })
-    # 被评为此品质的人物 (他者评价)。同一人可有多条评价边 → 按身份去重, 保留最强代表
+    # 被评为此品质的人物 (Phase 3 迁移后来自 event_qualities(subject_entity_id), 不再读冻结
+    # 的 mention_qualities/entity_mentions)。同一人可有多条评价边 → 按身份去重, 保留最强代表
     # (order 已按 status/confidence 降序, 首见即最强); 多取些行再折叠到 limit 个不同人。
     mrows = conn.execute(
-        f"SELECT en.name, en.slug, mq.evidence_quote, mq.rationale, mq.review_status, mq.confidence, "
-        f"em.book_id, em.chapter_seq, em.para_start, em.para_end "
-        f"FROM mention_qualities mq JOIN entity_mentions em ON em.id=mq.mention_id "
-        f"JOIN entities en ON en.id=em.entity_id "
-        f"WHERE mq.quality_id=? AND mq.review_status IN ({ph}) "
-        f"{order.replace('review_status','mq.review_status').replace('confidence','mq.confidence')}, en.name "
+        f"SELECT en.name, en.slug, eq.evidence_quote, eq.rationale, eq.review_status, eq.confidence, "
+        f"es.book_id, es.chapter_seq, es.para_start, es.para_end "
+        f"FROM event_qualities eq JOIN entities en ON en.id=eq.subject_entity_id "
+        f"LEFT JOIN event_sources es ON es.id=eq.evidence_src "
+        f"WHERE eq.quality_id=? AND eq.subject_entity_id IS NOT NULL AND eq.review_status IN ({ph}) "
+        f"{order.replace('review_status','eq.review_status').replace('confidence','eq.confidence')}, en.name "
         f"LIMIT ?", [qid] + statuses + [limit * 4]).fetchall()
     persons = []
     seen_person: set = set()
@@ -408,8 +457,10 @@ def query_by_quality(conn, quality: str, limit=10, include_draft=False) -> dict:
         if key in seen_person:
             continue
         seen_person.add(key)
-        bt = conn.execute("SELECT title, slug FROM books WHERE id=?", (bid,)).fetchone()
-        cit = citation(bt[0], chapter_name(conn, bt[1], seq), ps, pe) if bt else None
+        cit = None
+        if bid is not None:
+            bt = conn.execute("SELECT title, slug FROM books WHERE id=?", (bid,)).fetchone()
+            cit = citation(bt[0], chapter_name(conn, bt[1], seq), ps, pe) if bt else None
         persons.append({
             "name": pname, "person_slug": pslug,
             "evidence_quote": ev, "rationale": rat,

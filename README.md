@@ -44,8 +44,8 @@ zero; the goal is a useful public good.
 
 | tool | input | returns |
 |---|---|---|
-| `search_events` | `keyword` / `book` / `person` / `limit` | Cross-book fused historical events with **per-source provenance** (book · chapter · paragraph + role: primary/detailed/brief/comment/corroborating). `canonical_summary` is an LLM-fused machine narrative. |
-| `get_person` | `name` (given name or alias) | Person profile (LLM-synthesized, `draft`) + others' appraisals (verbatim source quotes, each cited) + attributed qualities + events mentioning them. |
+| `search_events` | `keyword` / `book` / `person` / `kind` / `limit` | Cross-book fused historical events with **per-source provenance** (book · chapter · paragraph + role: primary/detailed/brief/comment/corroborating). `canonical_summary` is an LLM-fused machine narrative. Optional `kind` filter (事件/场景/评价; unset = all, including appraisal events). `time_label` may be **derived from reviewed time anchors** — `time_label_source` says which (manual vs derived; omitted on pre-0.2 data). |
+| `get_person` | `name` (given name or alias) | Person profile (LLM-synthesized, `draft`) + others' appraisals (verbatim source quotes, each cited) + attributed qualities + events mentioning them + **person-to-person relations** (closed 26-type vocabulary — kinship/ruler-minister/mentorship/alliance/enmity; machine-reviewed, only `approved`/`auto_approved` exposed, no temporal bounds; empty on pre-0.2 data). |
 | `query_by_place` | `place` (today's place name) / `limit` | Ancient stories set on the land of a modern place, with citations. Same-name-different-place returns candidates for you to disambiguate — **it never silently picks one**. Directional/regional generic names are excluded. |
 | `query_by_quality` | `quality` (from a 55-term controlled vocabulary, e.g. 忠 loyalty, 谋略 strategy) / `limit` / `include_draft` | Representative events and people for a quality, each with an **original-text `evidence_quote`** and rationale. |
 

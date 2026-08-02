@@ -5,6 +5,39 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] — 2026-08-02
+
+### Added
+- **Person-to-person relations** in `get_person`: a `relations` array over a
+  closed 26-type vocabulary (kinship / ruler–minister / mentorship / alliance /
+  enmity …), extracted from shared-event source text with verbatim-evidence
+  anchoring and a machine review pass; only `approved`/`auto_approved` edges
+  are exposed, each with confidence and literal `review_status`. Edges carry
+  no temporal bounds (an ally edge and an enemy edge may both be true at
+  different times).
+- **Derived time labels** in `search_events`: when the hand-filled
+  `time_label` is empty, a label is derived from reviewed time anchors
+  (scope-priority chapter > book > global; genuine scholarly ambiguity is
+  rendered as "A／B", never collapsed). `time_label_source` distinguishes
+  `manual` from `derived_from_reviewed_time_anchors`.
+- Optional `kind` filter on `search_events` (事件/场景/评价). Unset returns
+  everything, including appraisal events migrated into the event graph.
+
+### Changed
+- Read paths now use the ADR-009 event-graph tables (`event_person_refs`/
+  `event_qualities`) instead of the frozen `entity_mentions`/
+  `mention_qualities` archives; person lookups are structural, not
+  string-matched.
+- Six same-person entity pairs merged upstream after evidence verification
+  (孙权/吴主, 刘备/先主, 光武→刘秀, 公孙鞅→商鞅, 太公→吕尚, 子展/公孙舍之);
+  ambiguous surface 太公 now multi-candidate (姜太公 vs 刘邦之父) and never
+  silently resolved.
+
+### Compatibility
+- Running this code against the **data-v0.1.0** corpus (no ADR-009 tables)
+  degrades honestly: `relations` is `[]`, derived time labels are omitted.
+  For the new axes, use the **data-v0.2.0** corpus release.
+
 ## [0.1.1] — 2026-07-04
 
 ### Added
