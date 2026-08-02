@@ -56,3 +56,11 @@ package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff.lint]
+# Pin the rule set explicitly: CI runs `pipx run ruff` (= latest release), and
+# floating defaults drift across versions (0.2.0 sync broke on RUF100/I001
+# appearing in newer defaults while E402 left them). E4 keeps E402 meaningful
+# for the `# noqa: E402` directives in files synced verbatim from the upstream
+# extraction repo.
+select = ["E4", "E7", "E9", "F"]
