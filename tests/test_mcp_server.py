@@ -87,6 +87,9 @@ def _build_fixture(path: str) -> None:
     c.execute("INSERT INTO event_qualities(event_id,quality_id,rationale,evidence_quote,confidence,"
               "review_status,evidence_src,subject_entity_id) "
               "VALUES(1,2,'评其刚','项羽勇而无谋',0.95,'draft',2,1)")
+    # 故事层品质 (P1-2 2026-08-03): story_qualities, mcp query_by_quality 的 stories 段来源
+    c.execute("INSERT INTO story_qualities(story_id,quality_id,rationale,evidence_quote,confidence,"
+              "review_status) VALUES(1,1,'刘邦驻军示强','沛公军霸上',0.85,'auto_approved')")
     # 人物关系 (ADR-009 收尾①): approved/auto_approved 透出, draft 门控隐藏;
     # 项羽在 b 侧的行须用互逆标签(君主)表述。
     c.execute("INSERT INTO relation_types(slug,label,category,reciprocal_slug,symmetric) "
@@ -235,6 +238,14 @@ class TestProtocol(_FixtureCase):
         d = self._tool("query_by_quality", {"quality": "勇", "include_draft": False})
         self.assertFalse(d["include_draft"])
         self.assertEqual(d["events"][0]["review_status"], "auto_approved")
+
+    def test_query_by_quality_includes_stories(self):
+        # P1-2 (2026-08-03): 品质层扩到故事层, query_by_quality 须新增 stories 段
+        d = self._tool("query_by_quality", {"quality": "勇"})
+        self.assertEqual(d["stories"][0]["title"], "鸿门宴前夜")
+        self.assertEqual(d["stories"][0]["review_status"], "auto_approved")
+        self.assertEqual(d["stories"][0]["evidence_quote"], "沛公军霸上")
+        self.assertIn("段", d["stories"][0]["citation"])
 
 
 class TestHonesty(_FixtureCase):
@@ -399,6 +410,30 @@ class TestOldDataGracefulDegradation(unittest.TestCase):
             evs = search_events(conn, "鸿门")["events"]
             self.assertTrue(all(e.get("time_label_source") in (None, "manual") for e in evs),
                             "时间派生表缺失 → 只剩手填/None, 不崩")
+            conn.close()
+        finally:
+            shutil.rmtree(path, ignore_errors=True)
+            for suffix in ("", "-wal", "-shm"):
+                try:
+                    os.remove(path + suffix)
+                except OSError:
+                    pass
+
+    def test_missing_story_qualities_degrades_not_crash(self):
+        # story_qualities (P1-2, 2026-08-03) postdates data-v0.1.0/v0.2.0 releases;
+        # query_by_quality must degrade to stories:[] not crash on those older corpora.
+        import shutil
+        fd, path = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        try:
+            _build_fixture(path)
+            raw = sqlite3.connect(path)
+            raw.executescript("DROP TABLE story_qualities;")
+            raw.close()
+            conn = ro_connect(path)
+            from storyextractor.mcp.queries import query_by_quality
+            d = query_by_quality(conn, "勇")
+            self.assertEqual([], d["stories"], "story_qualities 表缺失 → 空数组, 不崩")
             conn.close()
         finally:
             shutil.rmtree(path, ignore_errors=True)

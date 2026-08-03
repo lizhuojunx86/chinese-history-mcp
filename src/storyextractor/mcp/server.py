@@ -94,7 +94,7 @@ TOOLS = [
     {
         "name": "query_by_quality",
         "description": (
-            "按品质 (德性/才能/性情/为政…) 查代表性最强的事件与人物 + 原文证据。品质取自 55 词"
+            "按品质 (德性/才能/性情/为政…) 查代表性最强的事件/人物/故事 + 原文证据。品质取自 55 词"
             "受控词表 (如 忠/谋略/勇/仁/残暴/骄), 可用中文名或英文 slug。映射是【判断】非事实: "
             "auto_approved=机审高置信、draft=待人审; evidence_quote 是原文真子串; 默认只出机审通过。"),
         "inputSchema": {
@@ -102,7 +102,7 @@ TOOLS = [
             "properties": {
                 "quality": {"type": "string",
                             "description": "品质名或 slug, 如 '忠'、'谋略'、'yong'"},
-                "limit": {"type": "integer", "description": "事件/人物各返回条数 1-30, 默认 10", "default": 10},
+                "limit": {"type": "integer", "description": "事件/人物/故事各返回条数 1-30, 默认 10", "default": 10},
                 "include_draft": {"type": "boolean",
                                   "description": "是否含待人审(draft)映射, 默认 false 只返回机审通过", "default": False},
             },

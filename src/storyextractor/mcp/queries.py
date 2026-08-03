@@ -21,7 +21,7 @@ HONESTY = {
                "他者评价 excerpt 是公版原文照抄, 可溯源。"),
     "place": ("古今地名映射多为多 LLM 机审共识 (auto_approved), 少量人审 (approved); "
               "confidence 折高/中/存疑三档。story 为机器分割产物。"),
-    "quality": ("品质→事件/人物 是【判断】非事实: auto_approved=机审高置信, draft=待人审; "
+    "quality": ("品质→事件/人物/故事 是【判断】非事实: auto_approved=机审高置信, draft=待人审; "
                 "evidence_quote 是原文真子串, rationale 是 LLM 归纳理由。"),
     "text": "原文为公版白文, 标点/分段为机器生成; 白话译文全部机器翻译 (machine-generated)。",
 }
@@ -205,14 +205,17 @@ def get_person(conn, name: str) -> dict:
     # 他者评价 (跨篇, Phase 3 迁移后来自 events(kind=评价)/event_person_refs(role=subject),
     # 不再读冻结的 entity_mentions —— 见 docs/EVENT_DIMENSIONS.md §4/§7)
     apps = conn.execute(
-        "SELECT es.chapter_seq, es.para_start, es.para_end, es.excerpt, es.note, b.title, b.slug "
+        "SELECT es.chapter_seq, es.para_start, es.para_end, es.excerpt, es.note, b.title, b.slug, "
+        "(SELECT e2.name FROM event_person_refs sp JOIN entities e2 ON e2.id=sp.entity_id "
+        " WHERE sp.evidence_src=es.id AND sp.role='speaker' LIMIT 1) AS speaker "
         "FROM event_person_refs epr JOIN event_sources es ON es.id=epr.evidence_src "
         "JOIN books b ON b.id=es.book_id "
         "WHERE epr.entity_id=? AND epr.role='subject' ORDER BY es.id", (eid,)).fetchall()
     appraisals = [{
         "excerpt": ex, "gist": note, "aspect": "评价",
+        "speaker": spk,          # 评价者 (LLM 归属, 只写文本显式可证的; 无归属=None)
         "citation": citation(bt, chapter_name(conn, bs, seq), ps, pe),
-    } for seq, ps, pe, ex, note, bt, bs in apps]
+    } for seq, ps, pe, ex, note, bt, bs, spk in apps]
     # 史料评为的品质 (Phase 3 迁移后来自 event_qualities(subject_entity_id), 不再读冻结的
     # mention_qualities, 非 rejected)。同品质多条边 → 取最可信一条为代表, 逐字透出其
     # review_status (不折成布尔), strength 亦取该代表边 (不被 draft 边虚抬)。
@@ -411,11 +414,12 @@ def query_by_quality(conn, quality: str, limit=10, include_draft=False) -> dict:
     """品质名/slug → 代表性最强的事件/人物 + 原文证据。默认只出 approved/auto_approved。"""
     limit = _clamp(limit, 1, 30, 10)
     if not quality or not quality.strip():
-        return {"axis": "quality", "error": "quality 不能为空", "events": [], "persons": []}
+        return {"axis": "quality", "error": "quality 不能为空", "events": [], "persons": [], "stories": []}
     quality = quality.strip()
     q = _resolve_quality(conn, quality)
     if not q:
         return {"axis": "quality", "query": quality, "resolved": None, "events": [], "persons": [],
+                "stories": [],
                 "message": f"未找到品质『{quality}』。品质来自 55 词受控词表 (如 忠/谋略/勇/仁/残暴)。",
                 "honesty": HONESTY["quality"]}
     qid, slug, name, pol, cat, gloss, anto = q
@@ -469,6 +473,24 @@ def query_by_quality(conn, quality: str, limit=10, include_draft=False) -> dict:
         })
         if len(persons) >= limit:
             break
+    # 体现此品质的故事 (story_qualities, P1-2 2026-08-03 新增: 品质层扩到故事层的
+    # 故事级召回, 证据在段落粒度定位; citation 复用 stories.source_citation)
+    try:
+        srows = conn.execute(
+            f"SELECT s.slug, s.title, sq.rationale, sq.evidence_quote, sq.review_status, sq.confidence, "
+            f"s.source_citation FROM story_qualities sq JOIN stories s ON s.id=sq.story_id "
+            f"WHERE sq.quality_id=? AND sq.review_status IN ({ph}) "
+            f"{order.replace('review_status', 'sq.review_status').replace('confidence', 'sq.confidence')} "
+            f"LIMIT ?", [qid] + statuses + [limit]).fetchall()
+    except sqlite3.OperationalError:   # 旧数据版本 (corpus < data-v0.3.0) 无 story_qualities 表 → 空
+        srows = []
+    stories = [{
+        "story_slug": sslug, "title": title,
+        "rationale": rat, "rationale_note": "machine-generated (LLM 归纳)",
+        "evidence_quote": ev, "review_status": rstatus,
+        "strength": _strength(conf),
+        "citation": cit,
+    } for sslug, title, rat, ev, rstatus, conf, cit in srows]
     return {
         "axis": "quality",
         "query": quality,
@@ -477,5 +499,6 @@ def query_by_quality(conn, quality: str, limit=10, include_draft=False) -> dict:
         "include_draft": include_draft,
         "events": events,
         "persons": persons,
+        "stories": stories,
         "honesty": HONESTY["quality"] + " " + HONESTY["text"],
     }

@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] — 2026-08-03
+
+### Added
+- **Story-layer quality tags** in `query_by_quality`: a new `stories` array
+  alongside the existing `events`/`persons` sections, backed by the
+  story-level quality extraction landed 2026-08-03 (paragraph-granularity
+  evidence, same `evidence_quote`/`review_status`/confidence shape as the
+  other two sections). Empty-result and not-found responses now also return
+  `stories: []` for a stable shape.
+
+### Data
+- `data-v0.3.0` corpus.db release adds the story-quality edges (11k+ edges
+  over ~5.6k stories) on top of the v0.2.0 axes; schema unchanged (v11).
+
 ## [0.2.0] — 2026-08-02
 
 ### Added
